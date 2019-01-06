@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:aop="http://www.springframework.org/schema/aop" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:jee="http://www.springframework.org/schema/jee" xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd   
+       http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-3.0.xsd   
+       http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-3.0.xsd   
+       http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.0.xsd"
+	default-autowire="byName">
+
+	<context:component-scan base-package="com.test" />
+
+	<bean id="propertyConfigurer"
+		class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+		<property name="locations">
+			<list>
+				<value>conf/jdbc.properties</value>
+			</list>
+		</property>
+	</bean>
+
+	<!-- 数据源配置1 -->
+	<bean id="testDataSource1" class="com.alibaba.druid.pool.DruidDataSource"
+		init-method="init" destroy-method="close">
+		<property name="driverClassName" value="${db.driver}" />
+		<property name="url" value="${db1.jdbc.url}" />
+		<property name="username" value="${db.login.name}"></property>
+		<property name="password" value="${db.login.password}" />
+		<property name="filters" value="${db.filters}"></property>
+		<property name="maxActive" value="${db.pool.maxActive}"></property>
+		<property name="initialSize" value="${db.pool.initialSize}"></property>
+		<property name="minIdle" value="${db.pool.minIdle}"></property>
+		<property name="maxWait" value="${db.maxWait}"></property>
+		<property name="timeBetweenEvictionRunsMillis" value="${db.timeBetweenEvictionRunsMillis}"></property>
+		<property name="minEvictableIdleTimeMillis" value="${db.minEvictableIdleTimeMillis}"></property>
+		<property name="validationQuery" value="${db.validationQuery}"></property>
+		<property name="testWhileIdle" value="${db.testWhileIdle}"></property>
+		<property name="testOnBorrow" value="${db.testOnBorrow}"></property>
+		<property name="testOnReturn" value="${db.testOnReturn}"></property>
+		<property name="poolPreparedStatements" value="${db.poolPreparedStatements}"></property>
+		<property name="maxOpenPreparedStatements" value="${db.maxOpenPreparedStatements}"></property>
+		<!-- 监控数据库 -->
+		<property name="proxyFilters">
+			<list>
+				<ref bean="log-filter" />
+			</list>
+		</property>
+	</bean>
+
+	<!-- 数据源配置2 -->
+	<bean id="testDataSource2" class="com.alibaba.druid.pool.DruidDataSource"
+		init-method="init" destroy-method="close">
+		<property name="driverClassName" value="${db.driver}" />
+		<property name="url" value="${db2.jdbc.url}" />
+		<property name="username" value="${db.login.name}"></property>
+		<property name="password" value="${db.login.password}" />
+		<property name="filters" value="${db.filters}"></property>
+		<property name="maxActive" value="${db.pool.maxActive}"></property>
+		<property name="initialSize" value="${db.pool.initialSize}"></property>
+		<property name="minIdle" value="${db.pool.minIdle}"></property>
+		<property name="maxWait" value="${db.maxWait}"></property>
+		<property name="timeBetweenEvictionRunsMillis" value="${db.timeBetweenEvictionRunsMillis}"></property>
+		<property name="minEvictableIdleTimeMillis" value="${db.minEvictableIdleTimeMillis}"></property>
+		<property name="validationQuery" value="${db.validationQuery}"></property>
+		<property name="testWhileIdle" value="${db.testWhileIdle}"></property>
+		<property name="testOnBorrow" value="${db.testOnBorrow}"></property>
+		<property name="testOnReturn" value="${db.testOnReturn}"></property>
+		<property name="poolPreparedStatements" value="${db.poolPreparedStatements}"></property>
+		<property name="maxOpenPreparedStatements" value="${db.maxOpenPreparedStatements}"></property>
+		<!-- 监控数据库 -->
+		<property name="proxyFilters">
+			<list>
+				<ref bean="log-filter" />
+			</list>
+		</property>
+	</bean>
+
+	<!-- 编写spring 配置文件的配置多数源映射关系 -->
+	<bean class="com.test.DynamicDataSource" id="dataSource">
+		<property name="targetDataSources">
+			<map key-type="java.lang.String">
+				<entry value-ref="testDataSource1" key="testDataSource1"></entry>
+				<entry value-ref="testDataSource2" key="testDataSource2"></entry>
+			</map>
+		</property>
+		<property name="defaultTargetDataSource" ref="testDataSource1">
+		</property>
+	</bean>
+
+	<!-- 输出可执行的SQL -->
+	<bean id="log-filter" class="com.alibaba.druid.filter.logging.Log4jFilter">
+		<property name="statementExecutableSqlLogEnable" value="true" />
+	</bean>
+
+	<!-- 事务begin -->
+	<bean id="txManager"
+		class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="dataSource" />
+	</bean>
+
+	<!-- 这里没用到 
+	<tx:annotation-driven transaction-manager="txManager" /> 
+	-->
+
+	<!-- 事务end -->
+	<!-- 定义事务传播属性 -->
+	<!-- org.springframework.transaction.interceptor.TransactionInterceptor -->
+	<tx:advice id="txAdvice" transaction-manager="txManager">
+		<!-- NameMatchTransactionAttributeSource -->
+		<tx:attributes>
+			<!-- 对add、update、delete的方法进行事务 -->
+			<!-- RuleBasedTransactionAttribute -->
+			<tx:method name="add*" 		propagation="REQUIRED" rollback-for="java.lang.Exception" />
+			<tx:method name="delete*" 	propagation="REQUIRED" rollback-for="java.lang.Exception" />
+			<tx:method name="update*" 	propagation="REQUIRED" rollback-for="java.lang.Exception" />
+			<!-- 对剩余的方法进行事务为只读 -->
+			<tx:method name="*" propagation="NOT_SUPPORTED" read-only="true" />
+		</tx:attributes>
+	</tx:advice>
+
+    <!--
+         beanName : org.springframework.aop.config.internalAutoProxyCreator
+         className: AspectJAwareAdvisorAutoProxyCreator
+     -->
+    <bean id="dataSourceAdvice" class="com.test.DataSourceAdvice" />
+
+    <!-- 数据源 advice -->
+    <aop:config>
+        <!-- AspectJExpressionPointcut -->
+        <aop:pointcut id="transactionPointCut" expression="execution(* com.test.dao.*.*(..))" />
+        <!-- beanName : org.springframework.aop.support.DefaultBeanFactoryPointcutAdvisor#0 -->
+        <!-- className: DefaultBeanFactoryPointcutAdvisor -->
+        <aop:advisor advice-ref="dataSourceAdvice" 	pointcut-ref="transactionPointCut" order="1" />
+        
+		<!-- beanName : org.springframework.aop.support.DefaultBeanFactoryPointcutAdvisor#1 -->
+        <!-- className: DefaultBeanFactoryPointcutAdvisor -->
+        <aop:advisor advice-ref="txAdvice" 			pointcut-ref="transactionPointCut" order="2" />
+    </aop:config>
+
+</beans>
